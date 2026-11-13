@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La guardia de Boticas Qhali</title>
+<!--
+  Caso aplicado · Unidad VI, continuación de la clase 8.
+  Un solo tablero, la misma noche que el caso en Word.
+  Cada decisión correcta encaja una pieza. Archivo único, sin internet.
+-->
+<style>
+  :root {
+    --ink: #262626;
+    --muted: #595959;
+    --navy: #333f4f;
+    --green: #70ad47;
+    --green-d: #548235;
+    --green-s: #c6e0b4;
+    --blue: #deeaf6;
+    --blue-2: #f2f7fc;
+    --line: #d5deea;
+    --bg: #f3f6fb;
+    --wrong: #b94b5c;
+    --wrong-bg: #fdecef;
+    --ok-bg: #eef6e6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: Calibri, "Segoe UI", sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 420px at 0% -10%, rgba(198, 224, 180, .7), transparent 60%),
+      radial-gradient(800px 420px at 100% 0%, rgba(222, 234, 246, .9), transparent 55%),
+      var(--bg);
+  }
+  button, input { font-family: inherit; }
+  #app { max-width: 1080px; margin: 0 auto; padding: 22px 20px 40px; }
+  .screen { display: none; }
+  .screen.active { display: block; animation: rise .28s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  h1 { font-size: clamp(2rem, 4vw, 2.7rem); line-height: 1.05; margin: 8px 0 8px; letter-spacing: -.02em; }
+  h2 { font-size: 1.55rem; margin: 0 0 8px; }
+  .kicker {
+    display: inline-block; margin: 0;
+    background: var(--green-s); color: var(--navy);
+    font-weight: 700; font-size: .92rem;
+    padding: 4px 12px; border-radius: 999px;
+  }
+  .lead { font-size: 1.18rem; color: var(--navy); margin: 0 0 18px; max-width: 62ch; }
+  .grid-2 { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 18px;
+    padding: 18px 18px 16px; box-shadow: 0 8px 24px rgba(51, 63, 79, .06);
+  }
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .role { background: var(--blue); border-radius: 12px; padding: 10px 12px; }
+  .role b { display: block; color: var(--navy); }
+  .role span { color: var(--muted); font-size: .92rem; }
+  ol.pasos { margin: 8px 0 0; padding-left: 1.15rem; }
+  ol.pasos li { margin: 7px 0; line-height: 1.35; }
+  .btn {
+    border: 0; border-radius: 14px; cursor: pointer; font-weight: 700;
+    padding: 14px 18px; font-size: 1.08rem;
+  }
+  .btn:focus-visible, .opt:focus-visible { outline: 3px solid var(--navy); outline-offset: 3px; }
+  .btn-main { background: var(--green); color: #fff; box-shadow: 0 4px 0 var(--green-d); }
+  .btn-main:hover { filter: brightness(1.05); }
+  .btn-main:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-d); }
+  .btn-sec { background: var(--blue); color: var(--navy); }
+  .btn-sec:hover { filter: brightness(.98); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+  .top {
+    display: flex; justify-content: space-between; gap: 12px; align-items: flex-end;
+    margin-bottom: 12px;
+  }
+  .rail { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 8px 0 14px; }
+  @media (max-width: 720px) { .rail { grid-template-columns: repeat(3, 1fr); } }
+  .slot {
+    min-height: 74px; border-radius: 14px; border: 2px dashed #b7c3d4;
+    background: rgba(255,255,255,.55); padding: 8px 8px 10px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .slot .n { font-size: .75rem; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+  .slot .t { font-weight: 700; color: #8aa; font-size: .95rem; }
+  .slot.on {
+    border-style: solid; border-color: var(--green); background: var(--ok-bg);
+    animation: snap .35s ease;
+  }
+  .slot.on .n, .slot.on .t { color: var(--green-d); }
+  .slot.now { border-color: var(--navy); background: #fff; }
+  .slot.now .t { color: var(--navy); }
+  @keyframes snap { from { transform: scale(.92); } to { transform: none; } }
+  .scene { font-size: 1.16rem; line-height: 1.45; margin: 0 0 12px; }
+  .voz {
+    background: var(--green-s); border-radius: 12px; padding: 10px 12px; margin: 0 0 14px;
+    color: var(--navy); font-weight: 700;
+  }
+  .pregunta { font-size: 1.28rem; margin: 0 0 14px; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 800px) { .opts { grid-template-columns: 1fr; } }
+  .opt {
+    text-align: left; border: 2px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 16px; padding: 14px 14px 14px 46px; min-height: 92px;
+    font-size: 1.02rem; line-height: 1.35; cursor: pointer; position: relative;
+  }
+  .opt:hover:not([disabled]) { border-color: var(--green); }
+  .opt .key {
+    position: absolute; left: 12px; top: 12px; width: 26px; height: 26px; border-radius: 8px;
+    background: var(--navy); color: #fff; font-weight: 700; display: grid; place-items: center;
+    font-size: .9rem;
+  }
+  .opt.bad { border-color: var(--wrong); background: var(--wrong-bg); }
+  .opt.good { border-color: var(--green-d); background: var(--ok-bg); }
+  .opt.dim { opacity: .38; }
+  .opt[disabled] { cursor: default; }
+  .feedback { border-radius: 16px; padding: 14px 16px; margin-top: 12px; }
+  .feedback.bad { background: var(--wrong-bg); border: 1px solid #f3c2c9; }
+  .feedback.good { background: var(--ok-bg); border: 1px solid var(--green-s); }
+  .feedback h3 { margin: 0 0 6px; font-size: 1.05rem; }
+  .feedback p { margin: 0; line-height: 1.4; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .clock {
+    font-variant-numeric: tabular-nums; font-weight: 700; color: var(--navy);
+    background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+  }
+  .clock.hot { color: var(--wrong); border-color: var(--wrong); }
+  .plan li { margin: 8px 0; }
+  .fix { border-left: 4px solid var(--wrong); background: #fff; border-radius: 10px; padding: 8px 12px; margin-top: 8px; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+  <section id="sStart" class="screen active">
+    <p class="kicker">Caso aplicado · Unidad VI, continuación de la clase 8</p>
+    <h1>La guardia de Boticas Qhali</h1>
+    <p class="lead">El modelo de venta en local ya está en producción. Esta noche cierra el mes. Cada decisión correcta encaja una pieza.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h2>Seis decisiones</h2>
+        <ol class="pasos">
+          <li>OP-01. Quieren agregar una columna a venta, directo en producción.</li>
+          <li>OP-02. El cierre se pasa de la ventana y la base está arriba.</li>
+          <li>OP-03. Fallan los discos y la copia del jueves vive ahí.</li>
+          <li>OP-04. Proponen borrar ventas viejas para liberar espacio.</li>
+          <li>OP-05. Un padrón externo quiere entrar a entidad de negocio.</li>
+          <li>OP-06. Quieren cerrar el ticket porque las boticas ya abrieron.</li>
+        </ol>
+        <div class="row">
+          <button id="btnGo" class="btn btn-main">Abrir la guardia</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Quién decide</h2>
+        <div class="roles">
+          <div class="role"><b>Rosa Quispe</b><span>DBA de producción. Cambio, respaldo y conmutación.</span></div>
+          <div class="role"><b>Carmen Huamán</b><span>Dueña del dato. Acuerdo y retención.</span></div>
+          <div class="role"><b>Diego Salazar</b><span>Analista. Origen de lo que viene de afuera.</span></div>
+          <div class="role"><b>Elena Rivas</b><span>Ejecutiva de gestión de datos. Aprueba.</span></div>
+          <div class="role"><b>André Paredes</b><span>Desarrollador. Pide el cambio y prepara la carga.</span></div>
+        </div>
+        <p class="muted" style="margin:12px 0 0;">Seis piezas de un mismo cierre. La siguiente aparece cuando la anterior encaja.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="sPlay" class="screen" aria-live="polite">
+    <div class="top">
+      <div>
+        <p class="kicker" id="paso">Pieza 1 de 6</p>
+        <h2 id="titulo" style="margin-top:8px;"></h2>
+      </div>
+      <div class="clock" id="clock" hidden>1:30</div>
+    </div>
+    <div class="rail" id="rail" aria-label="Piezas del plan"></div>
+    <div class="card">
+      <p class="scene" id="escena"></p>
+      <p class="voz" id="voz"></p>
+      <p class="pregunta" id="pregunta"></p>
+      <div id="faseTalk">
+        <div class="row">
+          <button id="btnTimer" class="btn btn-sec" type="button">Tiempo para decidir</button>
+          <button id="btnOpts" class="btn btn-main" type="button">Ver las salidas</button>
+        </div>
+      </div>
+      <div id="faseChoose" hidden>
+        <div class="opts" id="opts"></div>
+      </div>
+      <div id="feedback" class="feedback" hidden></div>
+      <div class="row" id="faseNext" hidden>
+        <button id="btnRetry" class="btn btn-sec" type="button" hidden>Volver a votar</button>
+        <button id="btnLock" class="btn btn-main" type="button" hidden>Encajar la pieza</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="sEnd" class="screen">
+    <p class="kicker">Plan de guardia · Boticas Qhali</p>
+    <h1>Así cierra la noche</h1>
+    <p class="lead">Seis decisiones para el cierre del 28 de junio.</p>
+    <div class="card">
+      <ol class="plan" id="plan"></ol>
+    </div>
+    <div class="card" style="margin-top:14px;" id="boxFix">
+      <h2>Lo que esta noche no se hace</h2>
+      <div id="fixes"></div>
+    </div>
+    <div class="row">
+      <button id="btnRestart" class="btn btn-main" type="button">Hacer la guardia de nuevo</button>
+    </div>
+  </section>
+</div>
+<script>
+const PIEZAS = [
+  {
+    corto: "OP-01",
+    titulo: "18:40 · OP-01 La columna",
+    voz: "Rosa define el cambio. André lo pidió. Elena no lo ha aprobado.",
+    escena: "André escribe: \"Agrego descuento_campaña a venta en producción. Son dos minutos.\" Marketing responde: \"Ok, háganlo.\" El cierre es a las 22:00.",
+    pregunta: "¿Entra hoy esa columna a venta?",
+    porque: "El \"ok\" abre el pedido. No lo publica en producción. Rosa lo prueba en desarrollo y en calidad, deja la reversa y otro DBA lo revisa.",
+    opciones: [
+      { ok: true, t: "Rosa define el cambio, lo prueba en desarrollo y en calidad, y deja el script de reversa.", malo: "" },
+      { ok: false, t: "André lo ejecuta ahora en producción: el cierre no espera.", malo: "La columna entra sin prueba. Si el cierre se parte, no hay cómo volver atrás." },
+      { ok: false, t: "Con el \"ok\" del chat, Rosa lo publica sin pasar por calidad.", malo: "Hay un mensaje, no un cambio controlado. Nadie puede reconstruir qué se aprobó." },
+      { ok: false, t: "Se cancela el cierre de hoy y la columna queda para el mes que viene.", malo: "El cierre no tenía que morir. El cambio cabía antes de las 22:00." }
+    ]
+  },
+  {
+    corto: "OP-02",
+    titulo: "19:30 · OP-02 El acuerdo",
+    voz: "Carmen responde por el acuerdo. Rosa trae los informes.",
+    escena: "La base está arriba. cierre_ventas_mes lleva 40 minutos de más. Igual pasó en abril, mayo y junio. Infraestructura dice: \"Compremos otro servidor esta noche.\"",
+    pregunta: "¿El acuerdo se cumplió porque la base está arriba?",
+    porque: "No. Disponibilidad no es rendimiento. Rosa compara los informes de estos meses y busca la causa. El servidor nuevo no llega antes de las 22:00.",
+    opciones: [
+      { ok: true, t: "Rosa compara los informes del DBMS y del servidor, y busca la causa de la demora.", malo: "" },
+      { ok: false, t: "Como la base está arriba, el acuerdo se da por cumplido.", malo: "La base responde, pero el cierre no cabe en la ventana. El incumplimiento sigue." },
+      { ok: false, t: "Se detiene el cierre hasta comprar otro servidor.", malo: "El servidor no llega esta noche. El cierre se queda parado y no queda informe para comparar." },
+      { ok: false, t: "Se sube esta noche el tiempo máximo del acuerdo, para que el cierre quepa.", malo: "Mover la meta no explica la demora. El próximo cierre nace ya rendido." }
+    ]
+  },
+  {
+    corto: "OP-03",
+    titulo: "21:10 · OP-03 El disco",
+    voz: "Rosa decide la recuperación. Hay nodo de continuidad.",
+    escena: "Fallan los discos del servidor de ventas. La última copia completa es del jueves y está en ese mismo disco, igual que el registro. El operador dice: \"Restaura el jueves encima.\"",
+    pregunta: "¿Desde dónde se recupera el cierre?",
+    porque: "Una copia en el disco que falla no es un respaldo. Se conmuta al nodo sano y se recupera desde una copia que esté en otro medio.",
+    opciones: [
+      { ok: true, t: "Se conmuta al nodo sano y se recupera desde una copia que no esté en ese disco.", malo: "" },
+      { ok: false, t: "Se restaura la copia del jueves sobre los mismos discos.", malo: "La restauración puede pisar lo que aún se lee. Se pierde la noche y la única copia." },
+      { ok: false, t: "Se apaga todo hasta el lunes: sin disco nuevo no hay venta.", malo: "Hay nodo de continuidad. Apagar la noche deja a los 42 locales sin venta." },
+      { ok: false, t: "Se borra el registro de transacciones para liberar espacio.", malo: "Sin el registro, la recuperación se queda en el jueves. Y el disco sigue malo." }
+    ]
+  },
+  {
+    corto: "OP-04",
+    titulo: "21:25 · OP-04 La purga",
+    voz: "Carmen acuerda la retención. Rosa no borra en caliente.",
+    escena: "En el nodo sano hay poco espacio. Las ventas de 2022 y 2023 siguen en el disco primario. El operador dice: \"Borro todo lo anterior a 2024 y entra el cierre.\"",
+    pregunta: "¿Se borran esas ventas ahora?",
+    porque: "No. La purga no es un botón de esta noche. Carmen dice qué se archiva y qué se borra después. Hoy no se borra para que el cierre entre.",
+    opciones: [
+      { ok: true, t: "No se purga ahora. Lo viejo se archiva después, con el acuerdo de Carmen.", malo: "" },
+      { ok: false, t: "Se borran esta noche las ventas anteriores a 2024.", malo: "El cierre entra. Después Carmen descubre que se borró venta que aún debía conservarse." },
+      { ok: false, t: "Se deja todo para siempre en el disco primario.", malo: "El disco sigue lleno. Tampoco toda venta vive para siempre en el disco caro." },
+      { ok: false, t: "Se pasa toda la base, incluida la venta de hoy, a una cinta.", malo: "La cinta no sostiene el cierre de hoy. Se mezcla el archivo con la venta en curso." }
+    ]
+  },
+  {
+    corto: "OP-05",
+    titulo: "08:10 · OP-05 El padrón",
+    voz: "Diego documenta el origen. André prepara la carga. Rosa la implementa.",
+    escena: "Marketing deja un XML, \"Padrón de convenios\", con licencia de un solo uso, y pide cargarlo en entidad de negocio para cruzarlo con las ventas.",
+    pregunta: "¿Ese padrón entra a entidad de negocio?",
+    porque: "No. Un convenio no es un cliente. Diego documenta el origen, André prepara la carga y Rosa la implementa fuera de entidad de negocio.",
+    opciones: [
+      { ok: true, t: "Diego documenta el origen y Rosa carga el padrón fuera de entidad de negocio.", malo: "" },
+      { ok: false, t: "Se carga el XML directo en entidad de negocio: así ya queda en la base.", malo: "El convenio aparece como cliente. El modelo de la clase 8 se rompe." },
+      { ok: false, t: "Se reenvía el archivo a cada local por correo.", malo: "El dato sale de control y la licencia de un solo uso se reparte." },
+      { ok: false, t: "Rosa rechaza el archivo: Qhali solo opera datos nacidos en la empresa.", malo: "La operación también carga lo que se compra, si el origen queda documentado." }
+    ]
+  },
+  {
+    corto: "OP-06",
+    titulo: "09:30 · OP-06 La firma",
+    voz: "Rosa ejecutó. Elena aprueba. Carmen firma lo que ella tiene que poder leer.",
+    escena: "Las boticas ya venden. La mesa de ayuda dice: \"Cerramos el ticket. No hace falta firma.\"",
+    pregunta: "¿El ticket se cierra solo?",
+    porque: "No. Rosa ejecuta. Elena aprueba el plan. Carmen firma la retención y el acuerdo. Sin esas firmas, el lunes solo demuestra que las boticas abrieron.",
+    opciones: [
+      { ok: true, t: "Rosa deja hecha la ejecución. Elena aprueba el plan de la noche.", malo: "" },
+      { ok: false, t: "Firma solo André: él pidió la columna.", malo: "Quien pide no custodia el cambio. Mañana nadie sabe quién autorizó." },
+      { ok: false, t: "Firma solo Rosa: la operación es suya.", malo: "Rosa no se aprueba la recuperación ni la retención. Eso lo firma Elena." },
+      { ok: false, t: "No firma nadie. Si las boticas abrieron, el registro sobra.", malo: "No queda quién aprobó el cambio, la copia ni el padrón." }
+    ]
+  }
+];
+
+const $ = s => document.querySelector(s);
+const state = { i: 0, phase: "talk", deck: [], locked: [], misses: [], timer: null, left: 90, used: {} };
+
+function shuffle(list) {
+  const a = list.map((item, n) => ({ ...item, n }));
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+function paintRail() {
+  const rail = $("#rail");
+  rail.innerHTML = "";
+  PIEZAS.forEach((p, i) => {
+    const d = document.createElement("div");
+    d.className = "slot" + (state.locked.includes(i) ? " on" : "") + (i === state.i && !state.locked.includes(i) ? " now" : "");
+    d.innerHTML = '<span class="n">PIEZA ' + (i + 1) + '</span><span class="t">' + (state.locked.includes(i) ? p.corto : (i === state.i ? p.corto : "····")) + "</span>";
+    rail.appendChild(d);
+  });
+}
+
+function stopTimer() {
+  if (state.timer) clearInterval(state.timer);
+  state.timer = null;
+}
+
+function tick() {
+  const c = $("#clock");
+  const m = Math.floor(state.left / 60);
+  const s = String(state.left % 60).padStart(2, "0");
+  c.textContent = m + ":" + s;
+  c.classList.toggle("hot", state.left <= 10);
+  if (state.left <= 0) {
+    stopTimer();
+    c.textContent = "Tiempo";
+  }
+}
+
+function render() {
+  const p = PIEZAS[state.i];
+  $("#paso").textContent = "Pieza " + (state.i + 1) + " de " + PIEZAS.length;
+  $("#titulo").textContent = p.titulo;
+  $("#escena").textContent = p.escena;
+  $("#voz").textContent = p.voz;
+  $("#pregunta").textContent = p.pregunta;
+  paintRail();
+  $("#faseTalk").hidden = state.phase !== "talk";
+  $("#faseChoose").hidden = state.phase === "talk";
+  $("#faseNext").hidden = state.phase !== "result";
+  $("#feedback").hidden = state.phase !== "result";
+  $("#btnRetry").hidden = true;
+  $("#btnLock").hidden = true;
+  if (state.phase === "talk") {
+    stopTimer();
+    state.left = 90;
+    $("#clock").hidden = true;
+    $("#clock").classList.remove("hot");
+  }
+  if (state.phase === "choose") {
+    const box = $("#opts");
+    box.innerHTML = "";
+    state.deck.forEach((op, idx) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt";
+      b.innerHTML = '<span class="key">' + (idx + 1) + "</span>" + op.t;
+      const used = state.used[state.i] && state.used[state.i][op.t];
+      if (used) {
+        b.disabled = true;
+        b.classList.add("dim", "bad");
+      }
+      b.addEventListener("click", () => choose(idx));
+      box.appendChild(b);
+    });
+  }
+}
+
+function choose(idx) {
+  if (state.phase !== "choose") return;
+  const op = state.deck[idx];
+  const buttons = [...document.querySelectorAll(".opt")];
+  buttons.forEach(b => { b.disabled = true; });
+  state.phase = "result";
+  const fb = $("#feedback");
+  fb.hidden = false;
+  $("#faseNext").hidden = false;
+  if (op.ok) {
+    buttons[idx].classList.add("good");
+    fb.className = "feedback good";
+    fb.innerHTML = "<h3>La pieza encaja.</h3><p>" + PIEZAS[state.i].porque + "</p>";
+    $("#btnLock").hidden = false;
+  } else {
+    buttons[idx].classList.add("bad");
+    buttons.forEach((b, i) => { if (i !== idx) b.classList.add("dim"); });
+    fb.className = "feedback bad";
+    fb.innerHTML = "<h3>Esa salida no sostiene la noche.</h3><p>" + op.malo + "</p>";
+    if (!state.used[state.i]) state.used[state.i] = {};
+    state.used[state.i][op.t] = true;
+    state.misses.push({ pieza: PIEZAS[state.i].corto, texto: op.t, malo: op.malo });
+    $("#btnRetry").hidden = false;
+  }
+}
+
+function lock() {
+  state.locked.push(state.i);
+  if (state.i === PIEZAS.length - 1) {
+    finish();
+    return;
+  }
+  state.i += 1;
+  state.phase = "talk";
+  state.deck = shuffle(PIEZAS[state.i].opciones);
+  render();
+}
+
+function finish() {
+  stopTimer();
+  show("#sEnd");
+  const plan = $("#plan");
+  plan.innerHTML = "";
+  const frases = [
+    "OP-01. descuento_campaña no entra directo: Rosa lo prueba en desarrollo y en calidad, y deja la reversa.",
+    "OP-02. Que la base esté arriba no cumple el acuerdo. Rosa busca la causa en los informes.",
+    "OP-03. Se conmuta al nodo sano. La copia del jueves, en el disco que falla, no sirve.",
+    "OP-04. No se borran las ventas de 2022 y 2023 esta noche. Carmen acuerda el archivo después.",
+    "OP-05. El padrón no entra a entidad de negocio. Diego documenta el origen y Rosa lo carga aparte.",
+    "OP-06. Rosa ejecuta. Elena aprueba. Carmen firma retención y acuerdo."
+  ];
+  frases.forEach(f => {
+    const li = document.createElement("li");
+    li.textContent = f;
+    plan.appendChild(li);
+  });
+  const box = $("#fixes");
+  if (!state.misses.length) {
+    box.innerHTML = "<p>Las seis piezas quedaron en la primera decisión.</p>";
+  } else {
+    box.innerHTML = "";
+    state.misses.forEach(m => {
+      const d = document.createElement("div");
+      d.className = "fix";
+      d.innerHTML = "<b>" + m.pieza + ".</b> " + m.malo;
+      box.appendChild(d);
+    });
+  }
+}
+
+$("#btnGo").addEventListener("click", () => {
+  state.i = 0;
+  state.phase = "talk";
+  state.locked = [];
+  state.misses = [];
+  state.used = {};
+  state.deck = shuffle(PIEZAS[0].opciones);
+  show("#sPlay");
+  render();
+});
+
+$("#btnTimer").addEventListener("click", () => {
+  stopTimer();
+  state.left = 90;
+  $("#clock").hidden = false;
+  tick();
+  state.timer = setInterval(() => {
+    state.left -= 1;
+    tick();
+  }, 1000);
+});
+
+$("#btnOpts").addEventListener("click", () => {
+  stopTimer();
+  $("#clock").hidden = true;
+  state.phase = "choose";
+  render();
+});
+
+$("#btnRetry").addEventListener("click", () => {
+  state.phase = "choose";
+  render();
+});
+
+$("#btnLock").addEventListener("click", lock);
+
+$("#btnRestart").addEventListener("click", () => show("#sStart"));
+
+document.addEventListener("keydown", (e) => {
+  if (state.phase !== "choose") return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= 4) {
+    const btn = document.querySelectorAll(".opt")[n - 1];
+    if (btn && !btn.disabled) btn.click();
+  }
+});
+</script>
+</body>
+</html>
